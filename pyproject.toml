@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multi-file-reader-mcp"
+version = "0.1.0"
+description = "An MCP server that can read multiple files at once."
+readme = "README.md" # Optional: Add a README later if desired
+requires-python = ">=3.10" # Specify a compatible Python version range
+license = {text = "MIT"} # Or choose another appropriate license
+authors = [
+  {name = "Your Name", email = "your.email@example.com"}, # Optional: Add author info
+]
+dependencies = [
+    "fastmcp>=0.4.0", # Specify a version constraint for fastmcp
+    # Add any other direct dependencies your tool might need here
+]
+
+[project.optional-dependencies]
+dev = [
+    # Add development dependencies here if needed, e.g., pytest
+]
+
+# Optional: Tool-specific configurations like Ruff, MyPy, etc. can go here
+# [tool.ruff]
+# ...
