@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "multi-file-reader-mcp"
 version = "0.1.0"
 description = "An MCP server that can read multiple files at once."
+readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
