@@ -48,6 +48,10 @@ async def read_files(file_paths: List[str], ctx: Context) -> Dict[str, Union[str
     ctx.info(f"Finished processing {total_files} files.")
     return results
 
+def main():
+    """Entry point for running the MCP server."""
+    mcp.run()
+
 # Allow running the server directly for testing or advanced use cases
 if __name__ == "__main__":
-    mcp.run()
+    main()
