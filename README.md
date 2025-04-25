@@ -117,3 +117,5 @@ You can also debug with vscode via the built in debug launch configuration. To p
   "timeout": 30,
   "alwaysAllow": []
 }
+
+You can also set your uvx command to point to a branch on the repository via `"git+https://github.com/strawgate/filesystem-operations-mcp@branch-name"`.
