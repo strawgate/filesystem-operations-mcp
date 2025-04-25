@@ -5,6 +5,7 @@ This server provides tools for creating, listing contents, moving, deleting,
 and emptying folders, with centralized exception handling.
 """
 
+from fnmatch import fnmatch
 from fastmcp import Context
 from fastmcp.contrib.mcp_mixin import MCPMixin, mcp_tool
 from filesystem_operations_mcp.utils.exception_handling import handle_folder_errors
@@ -14,6 +15,7 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
+
 class FolderOperations(MCPMixin):
     """
     This class provides MCP tools to manipulate folders.
@@ -22,7 +24,7 @@ class FolderOperations(MCPMixin):
     and emptying folders, with integrated custom exception handling.
     """
 
-    def __init__(self, denied_operations:list[str]=None):
+    def __init__(self, denied_operations: list[str] = None):
         """
         Initializes the FolderOperations class.
         Args:
@@ -53,20 +55,81 @@ class FolderOperations(MCPMixin):
             return True
 
     @mcp_tool()
-    async def contents(self, ctx: Context, folder_path: str) -> list:
+    async def list(
+        self, ctx: Context, folder_path: str, include: str, exclude: str, recurse: bool
+    ) -> list:
         """
         Lists the contents of a folder.
+         If you are listing items recursively, the include and exclude patterns will 
+         apply to the relative path of the items. So to capture all files of a certain type
+         in a folder and its subfolders, you would use a pattern like `**/*.txt` for `include`.
 
         Args:
             folder_path: The path of the folder to list.
+            include: A glob pattern to include specific files, applies to the relative path.
+            exclude: A glob pattern to exclude specific files, applies to the relative path.
+            recurse: If True, lists contents recursively.
 
         Returns:
             list: A list of items in the folder.
         """
         async with handle_folder_errors(folder_path):
-            contents = os.listdir(folder_path)
+            contents = []
+
+            if recurse:
+                for dir_, _, files in os.walk(folder_path):
+                    for file_name in files:
+
+                        rel_dir = os.path.relpath(dir_, folder_path)
+                        rel_file = os.path.join(rel_dir, file_name)
+
+                        if include and not fnmatch(rel_file, include):
+                            continue
+                        if exclude and fnmatch(rel_file, exclude):
+                            continue
+
+                        contents.append(rel_file)
+            else:
+                contents = os.listdir(folder_path)
+
             ctx.info(f"Contents of {folder_path} listed successfully")
             return contents
+
+    @mcp_tool()
+    async def read_all(
+        self, ctx: Context, folder_path: str, include: str, exclude: str, recurse: bool
+    ) -> dict[str, str]:
+        """
+        Provides the full contents (every character) of every file in a folder.
+         If you are listing items recursively, the include and exclude patterns will 
+         apply to the relative path of the items. So to capture all files of a certain type
+         in a folder and its subfolders, you would use a pattern like `**/*.txt` for `include`.
+
+        Args:
+            folder_path: The path of the folder to list.
+            include: A glob pattern to include specific files, applies to the relative path.
+            exclude: A glob pattern to exclude specific files, applies to the relative path.
+            recurse: If True, reads files recursively.
+
+        Returns:
+            dict[str, str]: A dictionary with file paths as keys and their contents as values.
+        """
+        async with handle_folder_errors(folder_path):
+            files = await self.list(ctx, folder_path, include, exclude, recurse)
+
+            file_with_contents = {}
+
+            for file in files:
+                file_path = os.path.join(folder_path, file)
+                if not os.path.isfile(file_path):
+                    continue
+
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    file_with_contents[file] = content
+
+            ctx.info(f"Contents of all files in {folder_path} read successfully")
+            return file_with_contents
 
     @mcp_tool()
     async def move(self, ctx: Context, source_path: str, destination_path: str) -> bool:

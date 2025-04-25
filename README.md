@@ -28,7 +28,8 @@ These tools are available under the `file` server namespace.
 These tools are available under the `folder` server namespace.
 
 *   **`create`**: Creates a folder at the specified path
-*   **`contents`**: Lists the contents of a folder
+*   **`read_all`**: Returns the contents of all of the files in a folder (optionally, recursively). This can be expensive!
+*   **`list`**: Lists the contents of a folder (optionally, recursively)
 *   **`move`**: Moves a folder from source to destination
 *   **`delete`**: Deletes a folder at the specified path
 *   **`empty`**: Empties a folder by deleting all its contents

@@ -13,6 +13,7 @@ from filesystem_operations_mcp.utils.exception_handling import handle_file_error
 
 logger = getLogger(__name__)
 
+
 class FileOperations(MCPMixin):
     """
     This class provides MCP tools to manipulate files.
@@ -21,7 +22,7 @@ class FileOperations(MCPMixin):
     and deleting files, with integrated custom exception handling.
     """
 
-    def __init__(self, denied_operations:list[str]=None):
+    def __init__(self, denied_operations: list[str] = None):
         """
         Initializes the FileOperations class.
         Args:
@@ -34,6 +35,7 @@ class FileOperations(MCPMixin):
                     logger.info(f"Disabled file tool: {operation}")
 
         super().__init__()
+
     @mcp_tool()
     async def read(self, ctx: Context, file_path: str) -> str:
         """

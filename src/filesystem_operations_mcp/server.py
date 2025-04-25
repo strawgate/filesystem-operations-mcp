@@ -57,7 +57,9 @@ def main():
     file_operations.register_all(file_mcp)
 
     # Register the tools for folder manipulation, disabling any specified in settings
-    folder_operations = FolderOperations(denied_operations=settings.disabled_folder_tools)
+    folder_operations = FolderOperations(
+        denied_operations=settings.disabled_folder_tools
+    )
     folder_operations.register_all(folder_mcp)
 
     # Register the bulk tool caller
