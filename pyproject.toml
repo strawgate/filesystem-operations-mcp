@@ -31,7 +31,7 @@ packages = [
     { include = "filesystem_operations_mcp", from = "src" },
 ]
 [project.scripts]
-filesystem-operations-mcp = "filesystem_operations_mcp:main"
+filesystem-operations-mcp = "filesystem_operations_mcp.server:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto" 
