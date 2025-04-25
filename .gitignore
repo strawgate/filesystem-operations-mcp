@@ -1,1 +1,12 @@
 *.egg-info
+plan*
+*.log
+*.pyc
+__pycache__
+*.pyo
+*.pyd
+*.db
+.venv
+debug*
+archive
+**.DS_Store
