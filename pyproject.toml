@@ -3,26 +3,36 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "multi-file-reader-mcp"
+name = "filesystem-operations-mcp"
 version = "0.1.0"
-description = "An MCP server that can read multiple files at once."
+description = "An MCP server that can perform file and folder operations."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = "<4.0,>=3.10"
 license = {text = "MIT"}
 authors = [
   {name = "Bill Easton", email = "williamseaston@gmail.com"}, 
 ]
 dependencies = [
-    "fastmcp>=0.4.0",
+    "fastmcp>=2.2.1",
 ]
 [project.urls]
-"Homepage" = "https://github.com/strawgate/mcp-many-files"
-"Repository" = "https://github.com/strawgate/mcp-many-files"
+"Homepage" = "https://github.com/strawgate/filesystem-operations-mcp"
+"Repository" = "https://github.com/strawgate/filesystem-operations-mcp"
 
 
 [project.optional-dependencies]
-dev = [ 
+dev = [
+  "ruff (>=0.11.6,<0.12.0)",
+  "pytest (>=8.3.5,<9.0.0)",
+  "pytest-asyncio (>=0.23.0,<0.24.0)",
 ]
-
+[tool.poetry]
+packages = [
+    { include = "filesystem_operations_mcp", from = "src" },
+]
 [project.scripts]
-multi-file-reader-mcp = "multi_file_reader_mcp:main"
+filesystem-operations-mcp = "filesystem_operations_mcp.server:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto" 
+addopts = "-vv"

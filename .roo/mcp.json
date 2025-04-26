@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "multi_file_mcp": {
+      "url": "http://localhost:8000/sse",
+      "disabled": false,
+      "autoApprove": [],
+      "timeout": 30,
+      "alwaysAllow": [
+        "file_create",
+        "file_append",
+        "folder_delete"
+      ]
+    }
+  }
+}
