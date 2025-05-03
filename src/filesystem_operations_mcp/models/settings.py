@@ -6,8 +6,10 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
-
-DEFAULT_SKIP_READ = [
+DEFAULT_SKIP_LIST = [
+    "**/.?*/**",
+    ".?*/**", # exclude hidden folders
+    "**/.?*", # exclude hidden files
     "**/.git/**",
     ".git/*",
     "**/.svn/**",
@@ -15,11 +17,14 @@ DEFAULT_SKIP_READ = [
     "**/.mypy_cache/**",
     ".mypy_cache/*",
     "**/.pytest_cache/**",
-    ".pytest_cache/*",
+    "*.pytest_cache/*",
     "**/__pycache__/**",
-    "__pycache__/*",
+    "*__pycache__/*",
     "**/.venv/**",
     ".venv/*",
+]
+
+DEFAULT_SKIP_READ = [
     "*.pyc",
     "*.pyo",
     "*.pyd",
@@ -78,8 +83,14 @@ class FilesystemOperationsMCPSettings(BaseSettings):
         alias="disabled_folder_tools",
         description="List of disabled folder tools provided by DISABLED_FOLDER_TOOLS environment variable.",
     )
-    multi_read_file_exclusions: list[str] = Field(
+    read_file_exclusions: list[str] = Field(
         default_factory=lambda: DEFAULT_SKIP_READ,
-        alias="multi_read_file_exclusions",
+        alias="read_file_exclusions",
         description="List of file patterns to exclude from all multi-read operations.",
     )
+    list_folder_exclusions: list[str] = Field(
+        default_factory=lambda: DEFAULT_SKIP_LIST,
+        alias="list_folder_exclusions",
+        description="List of folder patterns to exclude from listing operations.",
+    )
+    

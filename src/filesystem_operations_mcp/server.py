@@ -59,7 +59,8 @@ def main():
     # Register the tools for folder manipulation, disabling any specified in settings
     folder_operations = FolderOperations(
         denied_operations=settings.disabled_folder_tools,
-        multi_read_file_exclusions=settings.multi_read_file_exclusions
+        read_file_exclusions=settings.read_file_exclusions,
+        list_folder_exclusions=settings.list_folder_exclusions,
     )
     folder_operations.register_all(folder_mcp)
 

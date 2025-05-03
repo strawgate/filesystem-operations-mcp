@@ -62,12 +62,16 @@ class FolderOperations(MCPMixin):
     It includes methods for creating, listing contents, moving, deleting,
     and emptying folders, with integrated custom exception handling.
     """
-    multi_read_file_exclusions: list[str] = Field(
+    read_file_exclusions: list[str] = Field(
         default_factory=list,
         description="List of file patterns to exclude from all multi-read operations."
     )
+    list_folder_exclusions: list[str] = Field(
+        default_factory=list,
+        description="List of folder patterns to exclude from listing operations."
+    )
 
-    def __init__(self, denied_operations: list[str] = None, multi_read_file_exclusions: list[str] = None):
+    def __init__(self, denied_operations: list[str] = None, list_folder_exclusions: list[str] = None, read_file_exclusions: list[str] = None):
         """
         Initializes the FolderOperations class.
         Args:
@@ -79,8 +83,8 @@ class FolderOperations(MCPMixin):
                     delattr(FolderOperations, operation)
                     logger.info(f"Disabled folder tool: {operation}")
 
-        self.multi_read_file_exclusions = multi_read_file_exclusions
-
+        self.read_file_exclusions = read_file_exclusions or []
+        self.list_folder_exclusions = list_folder_exclusions or []
 
         super().__init__()
 
@@ -125,7 +129,7 @@ class FolderOperations(MCPMixin):
 
     @mcp_tool()
     async def contents(
-        self, ctx: Context, folder_path: str, include: list[str], exclude: list[str], recurse: bool
+        self, ctx: Context, folder_path: str, include: list[str], exclude: list[str], recurse: bool, bypass_default_exclusions: bool = False
     ) -> list:
         """
         Lists the contents of a folder.
@@ -151,6 +155,12 @@ class FolderOperations(MCPMixin):
 
                         rel_dir = os.path.relpath(dir_, folder_path)
                         rel_file = os.path.join(rel_dir, file_name)
+
+                        if not bypass_default_exclusions:
+                            # Check if the file matches any default exclusion patterns
+                            if not self._matches_globs(rel_file, include=["*"], exclude=self.list_folder_exclusions):
+                                ctx.debug(f"Skipping file due to folder exclusions: {rel_file}")
+                                continue
 
                         if self._matches_globs(rel_file, include, exclude):
                             contents.append(rel_file)
@@ -184,8 +194,8 @@ class FolderOperations(MCPMixin):
             list[FileReadSuccess | FileReadError]: A list of results containing the file path and content or error.
         """
         async with handle_folder_errors(folder_path):
-            files = await self.contents(ctx, folder_path, include, exclude, recurse)
-            unfiltered_files = await self.contents(ctx, folder_path, [], [], recurse)
+            files = await self.contents(ctx, folder_path, include, exclude, recurse, bypass_default_exclusions)
+            unfiltered_file_count = len(await self.contents(ctx, folder_path, [], [], recurse, bypass_default_exclusions))
 
             results: list[FileReadSuccess] = []
             errors: list[FileReadError] = []
@@ -195,7 +205,7 @@ class FolderOperations(MCPMixin):
 
                 if not bypass_default_exclusions:
                     # Check if the file matches any default exclusion patterns
-                    if not self._matches_globs(file, include=["*"], exclude=self.multi_read_file_exclusions):
+                    if not self._matches_globs(file, include=["*"], exclude=self.read_file_exclusions):
                         ctx.debug(f"Skipping file due to exclusion: {file_path}")
                         continue
                 
@@ -219,7 +229,7 @@ class FolderOperations(MCPMixin):
 
             return FileReadSummary(
                 total_files=len(files),
-                skipped_files=len(unfiltered_files) - len(files),
+                skipped_files=unfiltered_file_count - len(files),
                 errors=errors,
                 results=results,
             )
