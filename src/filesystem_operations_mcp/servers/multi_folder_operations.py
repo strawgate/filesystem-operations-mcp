@@ -8,12 +8,93 @@ and emptying folders, with centralized exception handling.
 from fnmatch import fnmatch
 from fastmcp import Context
 from fastmcp.contrib.mcp_mixin import MCPMixin, mcp_tool
+from pydantic import BaseModel, Field
 from filesystem_operations_mcp.utils.exception_handling import handle_folder_errors
 import os
 import shutil
 from logging import getLogger
 
 logger = getLogger(__name__)
+
+DEFAULT_SKIP_READ = [
+    "**/.git/**",
+    "**/.svn/**",
+    "**/.mypy_cache/**",
+    "**/.pytest_cache/**",
+    "**/__pycache__/**",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    "*.hg",
+    "*.tox",
+    "*.com",
+    "*.class",
+    "*.dll",
+    "*.exe",
+    "*.o",
+    "*.so",
+    "*.7z",
+    "*.dmg",
+    "*.gz",
+    "*.iso",
+    "*.jar",
+    "*.rar",
+    "*.tar",
+    "*.zip",
+    "*.msi",
+    "*.sqlite",
+    "*.DS_Store",
+    "*.DS_Store?",
+    "*._*",
+    "*.Spotlight-V100",
+    "*.Trashes",
+    "*ehthumbs.db",
+    "*Thumbs.db",
+    "*desktop.ini",
+    "*.bak",
+    "*.swp",
+    "*.swo",
+    "*~",
+    "*#",
+]
+
+class BaseMultiFileReadResult(BaseModel):
+    file_path: str
+
+class FileReadError(BaseMultiFileReadResult):
+    """
+    A model to represent an error that occurred while reading a file.
+    
+    Attributes:
+        file_path (str): The path of the file that caused the error.
+        error (str): The error message.
+    """
+    error: str
+
+class FileReadSuccess(BaseModel):
+    """
+    A model to represent a successful file read operation.
+    
+    Attributes:
+        file_path (str): The path of the file that was read.
+        content (str): The content of the file.
+    """
+    file_path: str
+    content: str
+
+class FileReadSummary(BaseModel):
+    """
+    A model to summarize the results of reading files.
+    
+    Attributes:
+        total_files (int): The total number of files read.
+        successful_reads (int): The number of files read successfully.
+        errors (list[FileReadError]): A list of errors encountered while reading files.
+    """
+    total_files: int = Field(default=0, description="Total number of files processed")
+    skipped_files: int = Field(default=0, description="Number of files skipped due to exclusions")
+    errors: list[FileReadError] = Field(default_factory=list, description="List of errors encountered while reading files")
+    results: list[FileReadSuccess] = Field(default_factory=list, description="List of successfully read files with their content")
 
 
 class FolderOperations(MCPMixin):
@@ -55,8 +136,8 @@ class FolderOperations(MCPMixin):
             return True
 
     @mcp_tool()
-    async def list(
-        self, ctx: Context, folder_path: str, include: str, exclude: str, recurse: bool
+    async def contents(
+        self, ctx: Context, folder_path: str, include: list[str], exclude: list[str], recurse: bool
     ) -> list:
         """
         Lists the contents of a folder.
@@ -66,8 +147,8 @@ class FolderOperations(MCPMixin):
 
         Args:
             folder_path: The path of the folder to list.
-            include: A glob pattern to include specific files, applies to the relative path.
-            exclude: A glob pattern to exclude specific files, applies to the relative path.
+            include: A list of glob patterns to include specific files, applies to the relative path.
+            exclude: A list of glob pattern to exclude specific files, applies to the relative path.
             recurse: If True, lists contents recursively.
 
         Returns:
@@ -83,12 +164,12 @@ class FolderOperations(MCPMixin):
                         rel_dir = os.path.relpath(dir_, folder_path)
                         rel_file = os.path.join(rel_dir, file_name)
 
-                        if include and not fnmatch(rel_file, include):
-                            continue
-                        if exclude and fnmatch(rel_file, exclude):
-                            continue
+                        included = any([fnmatch(rel_file, pat) for pat in include] if include else [True])
 
-                        contents.append(rel_file)
+                        excluded = any([fnmatch(rel_file, pat) for pat in exclude])
+
+                        if included and not excluded:
+                            contents.append(rel_file)
             else:
                 contents = os.listdir(folder_path)
 
@@ -97,8 +178,8 @@ class FolderOperations(MCPMixin):
 
     @mcp_tool()
     async def read_all(
-        self, ctx: Context, folder_path: str, include: str, exclude: str, recurse: bool
-    ) -> dict[str, str]:
+        self, ctx: Context, folder_path: str, include: list[str], exclude: list[str], recurse: bool, head: int = 0, tail: int = 0, bypass_default_exclusions: bool = False
+    ) -> list[FileReadSuccess | FileReadError]:
         """
         Provides the full contents (every character) of every file in a folder.
          If you are listing items recursively, the include and exclude patterns will 
@@ -110,26 +191,54 @@ class FolderOperations(MCPMixin):
             include: A glob pattern to include specific files, applies to the relative path.
             exclude: A glob pattern to exclude specific files, applies to the relative path.
             recurse: If True, reads files recursively.
+            head: Number of lines to read from the start of each file (default is 0, meaning read all).
+            tail: Number of lines to read from the end of each file (default is 0, meaning read all).
+            bypass_default_exclusions: If True, skips the default exclusions for reading files.
 
         Returns:
-            dict[str, str]: A dictionary with file paths as keys and their contents as values.
+            list[FileReadSuccess | FileReadError]: A list of results containing the file path and content or error.
         """
         async with handle_folder_errors(folder_path):
-            files = await self.list(ctx, folder_path, include, exclude, recurse)
+            files = await self.contents(ctx, folder_path, include, exclude, recurse)
+            unfiltered_files = await self.contents(ctx, folder_path, [], [], recurse)
 
-            file_with_contents = {}
+            results: list[FileReadSuccess] = []
+            errors: list[FileReadError] = []
 
             for file in files:
                 file_path = os.path.join(folder_path, file)
+
+                if not bypass_default_exclusions:
+                    # Check if the file matches any default exclusion patterns
+                    if any(fnmatch(file, pat) for pat in DEFAULT_SKIP_READ):
+                        ctx.debug(f"Skipping file due to default exclusion: {file_path}")
+                        continue
+                
+
                 if not os.path.isfile(file_path):
                     continue
+                try:
+                    with open(file_path, "r", encoding="utf-8", errors="strict") as f:
+                        if head > 0:
+                            content = ''.join(f.readlines()[:head])
+                        elif tail > 0:
+                            f.seek(0, os.SEEK_END)
+                            f.seek(max(0, f.tell() - tail), os.SEEK_SET)
+                            content = f.read()
+                        else:
+                            content = f.read()
+                    results.append(FileReadSuccess(file_path=file, content=content))
+                    ctx.debug(f"File read successfully: {file_path}")
+                except Exception as e:
+                    errors.append(FileReadError(file_path=file, error=str(e)))
+                    ctx.error(f"Error reading file {file_path}: {e}")
 
-                with open(file_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    file_with_contents[file] = content
-
-            ctx.info(f"Contents of all files in {folder_path} read successfully")
-            return file_with_contents
+            return FileReadSummary(
+                total_files=len(files),
+                skipped_files=len(unfiltered_files) - len(files),
+                errors=errors,
+                results=results,
+            )
 
     @mcp_tool()
     async def move(self, ctx: Context, source_path: str, destination_path: str) -> bool:
