@@ -16,48 +16,6 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
-DEFAULT_SKIP_READ = [
-    "**/.git/**",
-    "**/.svn/**",
-    "**/.mypy_cache/**",
-    "**/.pytest_cache/**",
-    "**/__pycache__/**",
-    "*.pyc",
-    "*.pyo",
-    "*.pyd",
-    "*.hg",
-    "*.tox",
-    "*.com",
-    "*.class",
-    "*.dll",
-    "*.exe",
-    "*.o",
-    "*.so",
-    "*.7z",
-    "*.dmg",
-    "*.gz",
-    "*.iso",
-    "*.jar",
-    "*.rar",
-    "*.tar",
-    "*.zip",
-    "*.msi",
-    "*.sqlite",
-    "*.DS_Store",
-    "*.DS_Store?",
-    "*._*",
-    "*.Spotlight-V100",
-    "*.Trashes",
-    "*ehthumbs.db",
-    "*Thumbs.db",
-    "*desktop.ini",
-    "*.bak",
-    "*.swp",
-    "*.swo",
-    "*~",
-    "*#",
-]
-
 class BaseMultiFileReadResult(BaseModel):
     file_path: str
 
@@ -104,8 +62,12 @@ class FolderOperations(MCPMixin):
     It includes methods for creating, listing contents, moving, deleting,
     and emptying folders, with integrated custom exception handling.
     """
+    multi_read_file_exclusions: list[str] = Field(
+        default_factory=list,
+        description="List of file patterns to exclude from all multi-read operations."
+    )
 
-    def __init__(self, denied_operations: list[str] = None):
+    def __init__(self, denied_operations: list[str] = None, multi_read_file_exclusions: list[str] = None):
         """
         Initializes the FolderOperations class.
         Args:
@@ -116,6 +78,9 @@ class FolderOperations(MCPMixin):
                 if hasattr(self, operation):
                     delattr(FolderOperations, operation)
                     logger.info(f"Disabled folder tool: {operation}")
+
+        self.multi_read_file_exclusions = multi_read_file_exclusions
+
 
         super().__init__()
 
@@ -134,6 +99,29 @@ class FolderOperations(MCPMixin):
             os.makedirs(folder_path, exist_ok=True)
             ctx.info(f"Folder created successfully at {folder_path}")
             return True
+
+
+    def _matches_globs(self, path: str, include: list[str], exclude: list[str]) -> bool:
+        """
+        Checks if the given path matches the include and exclude glob patterns.
+
+        Args:
+            path: The path to check.
+            include: A list of glob patterns to include specific files.
+            exclude: A list of glob patterns to exclude specific files.
+
+        Returns:
+            bool: True if the path matches the include patterns and does not match the exclude patterns.
+        """
+
+        if include:
+            included = any(fnmatch(path, pat) for pat in include)
+        else:
+            included = True
+
+        excluded = any(fnmatch(path, pat) for pat in exclude)
+
+        return included and not excluded
 
     @mcp_tool()
     async def contents(
@@ -164,12 +152,9 @@ class FolderOperations(MCPMixin):
                         rel_dir = os.path.relpath(dir_, folder_path)
                         rel_file = os.path.join(rel_dir, file_name)
 
-                        included = any([fnmatch(rel_file, pat) for pat in include] if include else [True])
-
-                        excluded = any([fnmatch(rel_file, pat) for pat in exclude])
-
-                        if included and not excluded:
+                        if self._matches_globs(rel_file, include, exclude):
                             contents.append(rel_file)
+                            ctx.debug(f"Included file: {rel_file}")
             else:
                 contents = os.listdir(folder_path)
 
@@ -210,11 +195,10 @@ class FolderOperations(MCPMixin):
 
                 if not bypass_default_exclusions:
                     # Check if the file matches any default exclusion patterns
-                    if any(fnmatch(file, pat) for pat in DEFAULT_SKIP_READ):
-                        ctx.debug(f"Skipping file due to default exclusion: {file_path}")
+                    if not self._matches_globs(file, include=["*"], exclude=self.multi_read_file_exclusions):
+                        ctx.debug(f"Skipping file due to exclusion: {file_path}")
                         continue
                 
-
                 if not os.path.isfile(file_path):
                     continue
                 try:

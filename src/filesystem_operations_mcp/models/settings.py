@@ -7,6 +7,54 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 
+DEFAULT_SKIP_READ = [
+    "**/.git/**",
+    ".git/*",
+    "**/.svn/**",
+    ".svn/*",
+    "**/.mypy_cache/**",
+    ".mypy_cache/*",
+    "**/.pytest_cache/**",
+    ".pytest_cache/*",
+    "**/__pycache__/**",
+    "__pycache__/*",
+    "**/.venv/**",
+    ".venv/*",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    "*.hg",
+    "*.tox",
+    "*.com",
+    "*.class",
+    "*.dll",
+    "*.exe",
+    "*.o",
+    "*.so",
+    "*.7z",
+    "*.dmg",
+    "*.gz",
+    "*.iso",
+    "*.jar",
+    "*.rar",
+    "*.tar",
+    "*.zip",
+    "*.msi",
+    "*.sqlite",
+    "*.DS_Store",
+    "*.DS_Store?",
+    "*._*",
+    "*.Spotlight-V100",
+    "*.Trashes",
+    "*ehthumbs.db",
+    "*Thumbs.db",
+    "*desktop.ini",
+    "*.bak",
+    "*.swp",
+    "*.swo",
+    "*~",
+    "*#",
+]
 class FilesystemOperationsMCPSettings(BaseSettings):
     """
     Configuration settings for the Bulk Filesystem Operations MCP server.
@@ -20,13 +68,18 @@ class FilesystemOperationsMCPSettings(BaseSettings):
         alias="mcp_transport",
         description="The transport protocol for the MCP server, e.g., 'stdio', 'sse",
     )
-    disabled_file_tools: List[str] = Field(
+    disabled_file_tools: list[str] = Field(
         default_factory=list,
         alias="disabled_file_tools",
         description="List of disabled file tools provided by DISABLED_FILE_TOOLS environment variable.",
     )
-    disabled_folder_tools: List[str] = Field(
+    disabled_folder_tools: list[str] = Field(
         default_factory=list,
         alias="disabled_folder_tools",
         description="List of disabled folder tools provided by DISABLED_FOLDER_TOOLS environment variable.",
+    )
+    multi_read_file_exclusions: list[str] = Field(
+        default_factory=lambda: DEFAULT_SKIP_READ,
+        alias="multi_read_file_exclusions",
+        description="List of file patterns to exclude from all multi-read operations.",
     )
