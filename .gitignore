@@ -10,3 +10,4 @@ __pycache__
 debug*
 archive
 **.DS_Store
+build

@@ -1,7 +1,6 @@
 """
 Tests for the MCP server setup and configuration.
 """
-
 from filesystem_operations_mcp.models.settings import FilesystemOperationsMCPSettings
 from filesystem_operations_mcp.servers.multi_file_operations import FileOperations
 from filesystem_operations_mcp.servers.multi_folder_operations import FolderOperations

@@ -71,4 +71,5 @@ setup:
 	@echo "Setting up environment..."
 	python3 -m venv .venv
 	uv sync
+	uv sync --dev
 	echo "Activate the environment with 'source .venv/bin/activate'"

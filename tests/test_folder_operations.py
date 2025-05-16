@@ -179,3 +179,28 @@ async def test_read_all_without_default_exclusions(setup_test_folder):
 
     assert successful_files == expected_successful_files
     assert len(summary.errors) == 0 # Assuming no read errors for these files
+
+@pytest.mark.asyncio
+async def test_contents_with_include_only(setup_test_folder):
+    """Tests listing folder contents with only include patterns."""
+    folder_path = setup_test_folder
+    ctx = MockContext()
+    folder_operations = FolderOperations(
+        list_folder_exclusions=DEFAULT_SKIP_LIST,
+        read_file_exclusions=DEFAULT_SKIP_READ
+    )
+
+    # List contents with only include pattern for .txt files
+    contents = await folder_operations.contents(ctx, str(folder_path), include=["**/*.txt"], exclude=[], recurse=True)
+
+    # Expected files (only .txt files)
+    expected_contents = [
+        "./file1.txt",
+        "subdir/file3.txt",
+    ]
+
+    # Sort for consistent comparison
+    contents.sort()
+    expected_contents.sort()
+
+    assert contents == expected_contents
