@@ -36,19 +36,16 @@ def main():
 
     root_mcp = FastMCP(
         "FilesystemOperationsMCP",
-        description="An MCP server for filesystem operations.",
         dependencies=["fastmcp"],
     )
 
     file_mcp = FastMCP(
         "FileOperations",
-        description="An MCP server that can manipulate files.",
         dependencies=["fastmcp"],
     )
 
     folder_mcp = FastMCP(
         "FolderOperations",
-        description="An MCP server that can manipulate folders.",
         dependencies=["fastmcp"],
     )
 

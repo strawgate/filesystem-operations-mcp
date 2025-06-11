@@ -38,7 +38,10 @@ file_error_scenarios = [
     file_error_scenarios,
 )
 async def test_handle_file_errors(
-    raised_exception, expected_exception, exception_match, file_path
+    raised_exception: Exception,
+    expected_exception: type[Exception],
+    exception_match: str,
+    file_path: str,
 ):
     """
     Test the handle_file_errors context manager for different built-in exceptions.
@@ -55,7 +58,10 @@ async def test_handle_file_errors(
                 raise raised_exception
 
     if hasattr(excinfo.value, "file_path"):
-        assert excinfo.value.file_path == file_path
+        assert isinstance(excinfo.value, expected_exception)
+        assert hasattr(excinfo.value, "file_path")
+        file_path_value = getattr(excinfo.value, "file_path")
+        assert file_path_value == file_path
 
 
 # Parametrized test data for handle_folder_errors
@@ -82,7 +88,10 @@ folder_error_scenarios = [
     folder_error_scenarios,
 )
 async def test_handle_folder_errors(
-    raised_exception, expected_exception, exception_match, folder_path
+    raised_exception: Exception,
+    expected_exception: type[Exception],
+    exception_match: str,
+    folder_path: str,
 ):
     """
     Test the handle_folder_errors context manager for different built-in exceptions.
@@ -99,4 +108,7 @@ async def test_handle_folder_errors(
                 raise raised_exception
 
     if hasattr(excinfo.value, "folder_path"):
-        assert excinfo.value.folder_path == folder_path
+        assert isinstance(excinfo.value, expected_exception)
+        assert hasattr(excinfo.value, "folder_path")
+        folder_path_value = getattr(excinfo.value, "folder_path")
+        assert folder_path_value == folder_path

@@ -22,7 +22,7 @@ class FileOperations(MCPMixin):
     and deleting files, with integrated custom exception handling.
     """
 
-    def __init__(self, denied_operations: list[str] = None):
+    def __init__(self, denied_operations: list[str] | None = None):
         """
         Initializes the FileOperations class.
         Args:
@@ -50,7 +50,7 @@ class FileOperations(MCPMixin):
         async with handle_file_errors(file_path):
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            ctx.info(f"File read successfully from {file_path}")
+            await ctx.info(f"File read successfully from {file_path}")
             return content
 
     @mcp_tool()
@@ -68,7 +68,7 @@ class FileOperations(MCPMixin):
         async with handle_file_errors(file_path):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
-            ctx.info(f"File created successfully at {file_path}")
+            await ctx.info(f"File created successfully at {file_path}")
             return True
 
     @mcp_tool()
@@ -86,7 +86,7 @@ class FileOperations(MCPMixin):
         async with handle_file_errors(file_path):
             with open(file_path, "a", encoding="utf-8") as f:
                 f.write(content)
-            ctx.info(f"Content appended successfully to {file_path}")
+            await ctx.info(f"Content appended successfully to {file_path}")
             return True
 
     @mcp_tool()
@@ -103,7 +103,7 @@ class FileOperations(MCPMixin):
         async with handle_file_errors(file_path):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write("")
-            ctx.info(f"File content erased successfully at {file_path}")
+            await ctx.info(f"File content erased successfully at {file_path}")
             return True
 
     @mcp_tool()
@@ -120,7 +120,7 @@ class FileOperations(MCPMixin):
         """
         async with handle_file_errors(source_path):
             os.rename(source_path, destination_path)
-            ctx.info(f"File moved from {source_path} to {destination_path}")
+            await ctx.info(f"File moved from {source_path} to {destination_path}")
             return True
 
     @mcp_tool()
@@ -136,5 +136,5 @@ class FileOperations(MCPMixin):
         """
         async with handle_file_errors(file_path):
             os.remove(file_path)
-            ctx.info(f"File deleted successfully at {file_path}")
+            await ctx.info(f"File deleted successfully at {file_path}")
             return True

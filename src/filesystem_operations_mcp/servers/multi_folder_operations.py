@@ -16,43 +16,58 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
+
 class BaseMultiFileReadResult(BaseModel):
     file_path: str
+
 
 class FileReadError(BaseMultiFileReadResult):
     """
     A model to represent an error that occurred while reading a file.
-    
+
     Attributes:
         file_path (str): The path of the file that caused the error.
         error (str): The error message.
     """
+
     error: str
+
 
 class FileReadSuccess(BaseModel):
     """
     A model to represent a successful file read operation.
-    
+
     Attributes:
         file_path (str): The path of the file that was read.
         content (str): The content of the file.
     """
+
     file_path: str
     content: str
+
 
 class FileReadSummary(BaseModel):
     """
     A model to summarize the results of reading files.
-    
+
     Attributes:
         total_files (int): The total number of files read.
         successful_reads (int): The number of files read successfully.
         errors (list[FileReadError]): A list of errors encountered while reading files.
     """
+
     total_files: int = Field(default=0, description="Total number of files processed")
-    skipped_files: int = Field(default=0, description="Number of files skipped due to exclusions")
-    errors: list[FileReadError] = Field(default_factory=list, description="List of errors encountered while reading files")
-    results: list[FileReadSuccess] = Field(default_factory=list, description="List of successfully read files with their content")
+    skipped_files: int = Field(
+        default=0, description="Number of files skipped due to exclusions"
+    )
+    errors: list[FileReadError] = Field(
+        default_factory=list,
+        description="List of errors encountered while reading files",
+    )
+    results: list[FileReadSuccess] = Field(
+        default_factory=list,
+        description="List of successfully read files with their content",
+    )
 
 
 class FolderOperations(MCPMixin):
@@ -62,16 +77,22 @@ class FolderOperations(MCPMixin):
     It includes methods for creating, listing contents, moving, deleting,
     and emptying folders, with integrated custom exception handling.
     """
+
     read_file_exclusions: list[str] = Field(
         default_factory=list,
-        description="List of file patterns to exclude from all multi-read operations."
+        description="List of file patterns to exclude from all multi-read operations.",
     )
     list_folder_exclusions: list[str] = Field(
         default_factory=list,
-        description="List of folder patterns to exclude from listing operations."
+        description="List of folder patterns to exclude from listing operations.",
     )
 
-    def __init__(self, denied_operations: list[str] = None, list_folder_exclusions: list[str] = None, read_file_exclusions: list[str] = None):
+    def __init__(
+        self,
+        denied_operations: list[str] | None = None,
+        list_folder_exclusions: list[str] | None = None,
+        read_file_exclusions: list[str] | None = None,
+    ):
         """
         Initializes the FolderOperations class.
         Args:
@@ -101,9 +122,8 @@ class FolderOperations(MCPMixin):
         """
         async with handle_folder_errors(folder_path):
             os.makedirs(folder_path, exist_ok=True)
-            ctx.info(f"Folder created successfully at {folder_path}")
+            await ctx.info(f"Folder created successfully at {folder_path}")
             return True
-
 
     def _matches_globs(self, path: str, include: list[str], exclude: list[str]) -> bool:
         """
@@ -129,11 +149,17 @@ class FolderOperations(MCPMixin):
 
     @mcp_tool()
     async def contents(
-        self, ctx: Context, folder_path: str, include: list[str], exclude: list[str], recurse: bool, bypass_default_exclusions: bool = False
+        self,
+        ctx: Context,
+        folder_path: str,
+        include: list[str],
+        exclude: list[str],
+        recurse: bool,
+        bypass_default_exclusions: bool = False,
     ) -> list:
         """
         Lists the contents of a folder.
-         If you are listing items recursively, the include and exclude patterns will 
+         If you are listing items recursively, the include and exclude patterns will
          apply to the relative path of the items. So to capture all files of a certain type
          in a folder and its subfolders, you would use a pattern like `**/*.txt` for `include`.
 
@@ -152,36 +178,53 @@ class FolderOperations(MCPMixin):
             if recurse:
                 for dir_, _, files in os.walk(folder_path):
                     for file_name in files:
-
                         rel_dir = os.path.relpath(dir_, folder_path)
                         rel_file = os.path.join(rel_dir, file_name)
 
                         if not bypass_default_exclusions:
                             # Check if the file matches any default exclusion patterns
-                            if not self._matches_globs(rel_file, include=["*"], exclude=self.list_folder_exclusions):
-                                ctx.debug(f"Skipping file due to folder exclusions: {rel_file}")
+                            if not self._matches_globs(
+                                rel_file,
+                                include=["*"],
+                                exclude=self.list_folder_exclusions,
+                            ):
+                                await ctx.debug(
+                                    f"Skipping file due to folder exclusions: {rel_file}"
+                                )
                                 continue
 
                         if self._matches_globs(rel_file, include, exclude):
                             contents.append(rel_file)
-                            ctx.debug(f"Included file: {rel_file}")
+                            await ctx.debug(f"Included file: {rel_file}")
             else:
                 contents = os.listdir(folder_path)
                 for file in contents:
-                    if not self._matches_globs(file, include=["*"], exclude=self.list_folder_exclusions):
-                        ctx.debug(f"Skipping file due to folder exclusions: {file}")
+                    if not self._matches_globs(
+                        file, include=["*"], exclude=self.list_folder_exclusions
+                    ):
+                        await ctx.debug(
+                            f"Skipping file due to folder exclusions: {file}"
+                        )
                         contents.remove(file)
 
-            ctx.info(f"Contents of {folder_path} listed successfully")
+            await ctx.info(f"Contents of {folder_path} listed successfully")
             return contents
 
     @mcp_tool()
     async def read_all(
-        self, ctx: Context, folder_path: str, include: list[str], exclude: list[str], recurse: bool, head: int = 0, tail: int = 0, bypass_default_exclusions: bool = False
-    ) -> list[FileReadSuccess | FileReadError]:
+        self,
+        ctx: Context,
+        folder_path: str,
+        include: list[str],
+        exclude: list[str],
+        recurse: bool,
+        head: int = 0,
+        tail: int = 0,
+        bypass_default_exclusions: bool = False,
+    ) -> FileReadSummary:
         """
         Provides the full contents (every character) of every file in a folder.
-         If you are listing items recursively, the include and exclude patterns will 
+         If you are listing items recursively, the include and exclude patterns will
          apply to the relative path of the items. So to capture all files of a certain type
          in a folder and its subfolders, you would use a pattern like `**/*.txt` for `include`.
 
@@ -198,8 +241,14 @@ class FolderOperations(MCPMixin):
             list[FileReadSuccess | FileReadError]: A list of results containing the file path and content or error.
         """
         async with handle_folder_errors(folder_path):
-            files = await self.contents(ctx, folder_path, include, exclude, recurse, bypass_default_exclusions)
-            unfiltered_file_count = len(await self.contents(ctx, folder_path, [], [], recurse, bypass_default_exclusions))
+            files = await self.contents(
+                ctx, folder_path, include, exclude, recurse, bypass_default_exclusions
+            )
+            unfiltered_file_count = len(
+                await self.contents(
+                    ctx, folder_path, [], [], recurse, bypass_default_exclusions
+                )
+            )
 
             results: list[FileReadSuccess] = []
             errors: list[FileReadError] = []
@@ -209,16 +258,18 @@ class FolderOperations(MCPMixin):
 
                 if not bypass_default_exclusions:
                     # Check if the file matches any default exclusion patterns
-                    if not self._matches_globs(file, include=["*"], exclude=self.read_file_exclusions):
-                        ctx.debug(f"Skipping file due to exclusion: {file_path}")
+                    if not self._matches_globs(
+                        file, include=["*"], exclude=self.read_file_exclusions
+                    ):
+                        await ctx.debug(f"Skipping file due to exclusion: {file_path}")
                         continue
-                
+
                 if not os.path.isfile(file_path):
                     continue
                 try:
                     with open(file_path, "r", encoding="utf-8", errors="strict") as f:
                         if head > 0:
-                            content = ''.join(f.readlines()[:head])
+                            content = "".join(f.readlines()[:head])
                         elif tail > 0:
                             f.seek(0, os.SEEK_END)
                             f.seek(max(0, f.tell() - tail), os.SEEK_SET)
@@ -226,10 +277,10 @@ class FolderOperations(MCPMixin):
                         else:
                             content = f.read()
                     results.append(FileReadSuccess(file_path=file, content=content))
-                    ctx.debug(f"File read successfully: {file_path}")
+                    await ctx.debug(f"File read successfully: {file_path}")
                 except Exception as e:
                     errors.append(FileReadError(file_path=file, error=str(e)))
-                    ctx.error(f"Error reading file {file_path}: {e}")
+                    await ctx.error(f"Error reading file {file_path}: {e}")
 
             return FileReadSummary(
                 total_files=len(files),
@@ -252,7 +303,7 @@ class FolderOperations(MCPMixin):
         """
         async with handle_folder_errors(source_path):
             os.rename(source_path, destination_path)
-            ctx.info(f"Folder moved from {source_path} to {destination_path}")
+            await ctx.info(f"Folder moved from {source_path} to {destination_path}")
             return True
 
     @mcp_tool()
@@ -274,5 +325,5 @@ class FolderOperations(MCPMixin):
                 shutil.rmtree(folder_path)
             else:
                 os.rmdir(folder_path)
-            ctx.info(f"Folder deleted successfully at {folder_path}")
+            await ctx.info(f"Folder deleted successfully at {folder_path}")
             return True

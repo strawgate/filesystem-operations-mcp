@@ -4,7 +4,7 @@ Settings models for the Bulk Filesystem Operations MCP server.
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import Literal
 
 DEFAULT_SKIP_LIST = [
     "**/.?*/**",
@@ -68,7 +68,7 @@ class FilesystemOperationsMCPSettings(BaseSettings):
     """
 
     model_config = SettingsConfigDict()
-    mcp_transport: str = Field(
+    mcp_transport: Literal["stdio", "sse"] = Field(
         default="stdio",
         alias="mcp_transport",
         description="The transport protocol for the MCP server, e.g., 'stdio', 'sse",
