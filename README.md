@@ -1,3 +1,6 @@
+!! This project is archived, see https://github.com/strawgate/py-mcp-collection/tree/main/filesystem-operations-mcp for the latest version.
+
+
 # Bulk Filesystem Operations MCP Server
 
 This project provides a FastMCP server that exposes tools for performing bulk file and folder operations. It includes centralized exception handling for filesystem operations.
